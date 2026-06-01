@@ -32,32 +32,39 @@ end
 function (m::KANRNO)(input, ps, st)
     x, y_true = input
     bs = size(x)[end]
+    T = m.T
 
-    y = reshape(y_true[1, :], 1, bs)
-    hidden = similar(x, m.n_hidden, bs) .* 0.0f0
+    dxdt = (x[1:(T - 1), :] .- x[2:T, :]) ./ m.dt
 
-    st_out = st.output_layers
-    st_hid = st.hidden_layers
+    y = similar(x, T, bs)
+    y[1, :] .= y_true[1, :]
 
-    for t in 2:(m.T)
-        xt = reshape(x[t, :], 1, :)
-        xprev = reshape(x[t - 1, :], 1, :)
+    hidden = fill!(similar(x, m.n_hidden, bs), 0.0f0)
 
-        h0 = similar(x, m.n_hidden, bs) .* 0.0f0
-        h = vcat(xprev, hidden)
+    state = (2, hidden, y, st.output_layers, st.hidden_layers)
+    @trace while first(state) <= T
+        t, hidden_curr, y_curr, st_out_curr, st_hid_curr = state
+
+        xprev = x[(t - 1):(t - 1), :]
+        dxdt_t = dxdt[(t - 1):(t - 1), :]
+
+        h = vcat(xprev, hidden_curr)
         for (k, layer) in pairs(m.hidden_layers)
-            h, st_hid_k = layer(h, ps.hidden_layers[k], st_hid[k])
-            st_hid = merge(st_hid, NamedTuple{(k,)}((st_hid_k,)))
+            h, st_hid_k = layer(h, ps.hidden_layers[k], st_hid_curr[k])
+            st_hid_curr = merge(st_hid_curr, NamedTuple{(k,)}((st_hid_k,)))
         end
-        hidden = (h .* m.dt) .+ h0
+        hidden_new = h .* m.dt
 
-        output = vcat(xprev, (xprev .- xt) ./ m.dt, hidden)
+        output = vcat(xprev, dxdt_t, hidden_new)
         for (k, layer) in pairs(m.output_layers)
-            output, st_out_k = layer(output, ps.output_layers[k], st_out[k])
-            st_out = merge(st_out, NamedTuple{(k,)}((st_out_k,)))
+            output, st_out_k = layer(output, ps.output_layers[k], st_out_curr[k])
+            st_out_curr = merge(st_out_curr, NamedTuple{(k,)}((st_out_k,)))
         end
-        y = vcat(y, output)
+        y_curr[t:t, :] = output
+
+        state = (t + 1, hidden_new, y_curr, st_out_curr, st_hid_curr)
     end
 
-    return y, (output_layers = st_out, hidden_layers = st_hid)
+    _, _, y_final, st_out_final, st_hid_final = state
+    return y_final, (output_layers = st_out_final, hidden_layers = st_hid_final)
 end
