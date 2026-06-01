@@ -32,39 +32,33 @@ end
 function (m::KANRNO)(input, ps, st)
     x, y_true = input
     bs = size(x)[end]
-    T = m.T
 
-    dxdt = (x[1:(T - 1), :] .- x[2:T, :]) ./ m.dt
+    dxdt = (x[1:(m.T - 1), :] .- x[2:(m.T), :]) ./ m.dt
 
-    y_init = reshape(y_true[1, :], 1, bs)
-    y_rest = similar(x, T - 1, bs) .* 0.0f0
-
+    y = y_true[1:1, :]
     hidden = similar(x, m.n_hidden, bs) .* 0.0f0
 
-    state = (2, hidden, y_rest, st.output_layers, st.hidden_layers)
-    @trace while first(state) <= T
-        t, hidden_curr, y_curr, st_out_curr, st_hid_curr = state
+    st_out = st.output_layers
+    st_hid = st.hidden_layers
 
+    for t in 2:(m.T)
         xprev = x[(t - 1):(t - 1), :]
         dxdt_t = dxdt[(t - 1):(t - 1), :]
 
-        h = vcat(xprev, hidden_curr)
+        h = vcat(xprev, hidden)
         for (k, layer) in pairs(m.hidden_layers)
-            h, st_hid_k = layer(h, ps.hidden_layers[k], st_hid_curr[k])
-            st_hid_curr = merge(st_hid_curr, NamedTuple{(k,)}((st_hid_k,)))
+            h, st_hid_k = layer(h, ps.hidden_layers[k], st_hid[k])
+            st_hid = merge(st_hid, NamedTuple{(k,)}((st_hid_k,)))
         end
-        hidden_new = h .* m.dt
+        hidden = h .* m.dt
 
-        output = vcat(xprev, dxdt_t, hidden_new)
+        output = vcat(xprev, dxdt_t, hidden)
         for (k, layer) in pairs(m.output_layers)
-            output, st_out_k = layer(output, ps.output_layers[k], st_out_curr[k])
-            st_out_curr = merge(st_out_curr, NamedTuple{(k,)}((st_out_k,)))
+            output, st_out_k = layer(output, ps.output_layers[k], st_out[k])
+            st_out = merge(st_out, NamedTuple{(k,)}((st_out_k,)))
         end
-        y_curr[(t - 1):(t - 1), :] = output
-
-        state = (t + 1, hidden_new, y_curr, st_out_curr, st_hid_curr)
+        y = vcat(y, output)
     end
 
-    _, _, y_rest_final, st_out_final, st_hid_final = state
-    return vcat(y_init, y_rest_final), (output_layers = st_out_final, hidden_layers = st_hid_final)
+    return y, (output_layers = st_out, hidden_layers = st_hid)
 end

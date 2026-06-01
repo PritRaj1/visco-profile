@@ -1,5 +1,5 @@
 function step_decay(epoch, lr, step, decay, min_lr)
-    return max(lr * decay^(epoch / step), min_lr)
+    return Float32(max(lr * decay^(epoch / step), min_lr))
 end
 
 function train_epoch(train_state, train_loader, test_loader, loss_fn, model, epoch, cfg::ModelConfig)
@@ -19,8 +19,10 @@ function train_epoch(train_state, train_loader, test_loader, loss_fn, model, epo
     end
 
     st_test = Lux.testmode(train_state.states)
+    (x_first, y_first) = first(test_loader)
+    eval_fwd = @compile model((x_first, y_first), train_state.parameters, st_test)
     for (x, y) in test_loader
-        y_pred, _ = model((x, y), train_state.parameters, st_test)
+        y_pred, _ = eval_fwd((x, y), train_state.parameters, st_test)
         test_loss += loss_fn(y_pred, y)
     end
 

@@ -24,34 +24,25 @@ end
 function (m::RNO)(input, ps, st)
     x, y_true = input
     bs = size(x)[end]
-    T = m.T
 
-    dxdt = (x[1:(T - 1), :] .- x[2:T, :]) ./ m.dt
+    dxdt = (x[1:(m.T - 1), :] .- x[2:(m.T), :]) ./ m.dt
 
-    y_init = reshape(y_true[1, :], 1, bs)
-    y_rest = similar(x, T - 1, bs) .* 0.0f0
-
+    y = y_true[1:1, :]
     hidden = similar(x, m.n_hidden, bs) .* 0.0f0
 
-    state = (2, hidden, y_rest, st.output_chain, st.hidden_chain)
-    @trace while first(state) <= T
-        t, hidden_curr, y_curr, st_out_curr, st_hid_curr = state
+    st_out = st.output_chain
+    st_hid = st.hidden_chain
 
+    for t in 2:(m.T)
         xprev = x[(t - 1):(t - 1), :]
         dxdt_t = dxdt[(t - 1):(t - 1), :]
 
-        h, st_hid_new = m.hidden_chain(vcat(xprev, hidden_curr), ps.hidden_chain, st_hid_curr)
-        hidden_new = h .* m.dt
+        h, st_hid = m.hidden_chain(vcat(xprev, hidden), ps.hidden_chain, st_hid)
+        hidden = h .* m.dt
 
-        out, st_out_new = m.output_chain(
-            vcat(xprev, dxdt_t, hidden_new),
-            ps.output_chain, st_out_curr,
-        )
-        y_curr[(t - 1):(t - 1), :] = out
-
-        state = (t + 1, hidden_new, y_curr, st_out_new, st_hid_new)
+        out, st_out = m.output_chain(vcat(xprev, dxdt_t, hidden), ps.output_chain, st_out)
+        y = vcat(y, out)
     end
 
-    _, _, y_rest_final, st_out_final, st_hid_final = state
-    return vcat(y_init, y_rest_final), (output_chain = st_out_final, hidden_chain = st_hid_final)
+    return y, (output_chain = st_out, hidden_chain = st_hid)
 end
