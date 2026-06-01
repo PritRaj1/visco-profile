@@ -18,7 +18,7 @@ function run_trial(cfg::ModelConfig, trial)
     train_loader, test_loader = get_visco_loader(cfg.batch_size; dev = dev)
     input_size = size(first(train_loader)[2], 1)
     model = create_model(cfg, input_size)
-    ps, st = Lux.setup(Lux.default_rng(), model)
+    ps, st = Lux.setup(Random.default_rng(), model)
     ps, st = ps |> dev, st |> dev
     train_state = Training.TrainState(model, ps, st, Optimisers.Adam(cfg.learning_rate))
     loss_fn(yp, y) = loss_fcn(yp, y; p = cfg.p)

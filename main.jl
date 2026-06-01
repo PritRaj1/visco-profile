@@ -18,7 +18,7 @@ dev = reactant_device()
 
 train_loader, test_loader = get_visco_loader(cfg.batch_size; dev = dev)
 input_size = size(first(train_loader)[2], 1)
-rng = Lux.default_rng()
+rng = Random.default_rng()
 
 log_dir = joinpath("logs", model_name)
 model_dir = joinpath(log_dir, "trained_models")

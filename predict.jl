@@ -2,6 +2,7 @@ include("src/WavKANSequence.jl")
 
 using .WavKANSequence
 using Lux
+using Random
 using Reactant
 using JLD2
 using Plots; pythonplot()
@@ -15,7 +16,7 @@ train_loader, test_loader = get_visco_loader(1; dev = dev)
 input_size = size(first(train_loader)[2], 1)
 
 model = create_model(cfg, input_size)
-rng = Lux.default_rng()
+rng = Random.default_rng()
 _, st = Lux.setup(rng, model)
 
 model_file = joinpath("logs", model_name, "trained_models", "model_1.jld2")

@@ -5,7 +5,7 @@ using Lux: Training
 using NNlib
 using Optimisers
 using Random: AbstractRNG
-using Reactant: @compile, @trace, AutoEnzyme
+using Reactant: @compile, @trace
 
 include("utils.jl")
 include("config.jl")
