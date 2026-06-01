@@ -36,12 +36,12 @@ function (m::KANRNO)(input, ps, st)
 
     dxdt = (x[1:(T - 1), :] .- x[2:T, :]) ./ m.dt
 
-    y = similar(x, T, bs)
-    y[1, :] .= y_true[1, :]
+    y_init = reshape(y_true[1, :], 1, bs)
+    y_rest = similar(x, T - 1, bs) .* 0.0f0
 
-    hidden = fill!(similar(x, m.n_hidden, bs), 0.0f0)
+    hidden = similar(x, m.n_hidden, bs) .* 0.0f0
 
-    state = (2, hidden, y, st.output_layers, st.hidden_layers)
+    state = (2, hidden, y_rest, st.output_layers, st.hidden_layers)
     @trace while first(state) <= T
         t, hidden_curr, y_curr, st_out_curr, st_hid_curr = state
 
@@ -60,11 +60,11 @@ function (m::KANRNO)(input, ps, st)
             output, st_out_k = layer(output, ps.output_layers[k], st_out_curr[k])
             st_out_curr = merge(st_out_curr, NamedTuple{(k,)}((st_out_k,)))
         end
-        y_curr[t:t, :] = output
+        y_curr[(t - 1):(t - 1), :] = output
 
         state = (t + 1, hidden_new, y_curr, st_out_curr, st_hid_curr)
     end
 
-    _, _, y_final, st_out_final, st_hid_final = state
-    return y_final, (output_layers = st_out_final, hidden_layers = st_hid_final)
+    _, _, y_rest_final, st_out_final, st_hid_final = state
+    return vcat(y_init, y_rest_final), (output_layers = st_out_final, hidden_layers = st_hid_final)
 end
