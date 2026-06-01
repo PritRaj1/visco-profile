@@ -16,11 +16,8 @@ batch_mul(x, y) = x .* y
 three_mul(x, y, z) = x .* y .* z
 
 function node_mul(y::AbstractArray{T, 3}, w::AbstractMatrix{T}) where {T}
-    in_, out_, k = size(y)
-    output = reshape(w, in_, out_, 1) .* y
-    flat = reshape(output, in_, out_ * k)
-    summed = reshape(fill(one(T), 1, in_), 1, in_) * flat
-    return reshape(summed, out_, k)
+    output = reshape(w, size(w, 1), size(w, 2), 1) .* y
+    return reshape(sum(output; dims = 1), size(w, 2), size(y, 3))
 end
 
 function node_mul(y::AbstractArray{T, 4}, w::AbstractMatrix{T}) where {T}
