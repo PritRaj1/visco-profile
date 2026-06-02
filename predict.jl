@@ -28,7 +28,7 @@ num_samples = size(epsi_first, 1)
 
 model_compiled = @compile model((epsi_first, sigma_first), ps, Lux.testmode(st))
 predicted_stress, _ = model_compiled((epsi_first, sigma_first), ps, Lux.testmode(st))
-predicted_stress = copy(predicted_stress) |> cpu_device()
+predicted_stress = predicted_stress |> cpu_device()
 epsi_first = epsi_first |> cpu_device()
 sigma_first = sigma_first |> cpu_device()
 

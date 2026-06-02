@@ -19,9 +19,11 @@ function _train_step(model, ps, st, x, y)
     _, loss, _, train_state = Training.single_train_step!(
         AutoEnzyme(), objective, (x, y), train_state,
     )
-    eval_fwd = @compile model((x, y), train_state.parameters, Lux.testmode(train_state.states))
-    y_pred, _ = eval_fwd((x, y), train_state.parameters, Lux.testmode(train_state.states))
-    return loss, y_pred
+    st_test = Lux.testmode(train_state.states)
+    eval_loss(ps, st, x, y) = loss_fcn(model((x, y), ps, st)[1], y)
+    eval_fwd = @compile eval_loss(train_state.parameters, st_test, x, y)
+    test_loss = eval_fwd(train_state.parameters, st_test, x, y)
+    return loss, test_loss
 end
 
 @testset "Wavelets" begin
@@ -98,9 +100,9 @@ end
     ps, st = Lux.setup(RNG, model)
     x = randn(Float32, 8, 2)
     y_true = randn(Float32, 8, 2)
-    loss, y_pred = _train_step(model, ps, st, x, y_true)
-    @test isfinite(loss)
-    @test size(y_pred) == (8, 2)
+    loss, test_loss = _train_step(model, ps, st, x, y_true)
+    @test isfinite(Float32(loss))
+    @test isfinite(Float32(test_loss))
 end
 
 @testset "KAN_RNO train step" begin
@@ -109,9 +111,9 @@ end
     ps, st = Lux.setup(RNG, model)
     x = randn(Float32, 8, 2)
     y_true = randn(Float32, 8, 2)
-    loss, y_pred = _train_step(model, ps, st, x, y_true)
-    @test isfinite(loss)
-    @test size(y_pred) == (8, 2)
+    loss, test_loss = _train_step(model, ps, st, x, y_true)
+    @test isfinite(Float32(loss))
+    @test isfinite(Float32(test_loss))
 end
 
 @testset "Transformer train step" begin

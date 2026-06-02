@@ -22,11 +22,13 @@ function run_trial(cfg::ModelConfig, trial)
     ps, st = ps |> dev, st |> dev
     train_state = Training.TrainState(model, ps, st, Optimisers.Adam(cfg.learning_rate))
     loss_fn(yp, y) = loss_fcn(yp, y; p = cfg.p)
+    eval_fwd = WavKANSequence.compile_eval(model, ps, st, test_loader, loss_fn)
     test_loss = 0.0
     for epoch in 1:(cfg.num_epochs)
-        train_state, _, test_loss = train_epoch(train_state, train_loader, test_loader, loss_fn, model, epoch, cfg)
+        train_state, _, test_loss = train_epoch(train_state, train_loader, test_loader, loss_fn, model, eval_fwd, epoch, cfg)
         report_value!(trial, test_loss)
         should_prune(trial) && return
+        GC.gc()
     end
     test_loss < 100 && report_success!(trial)
     return test_loss
@@ -41,7 +43,7 @@ function rno_objective(trial)
     @suggest learning_rate in trial
     @suggest gamma_val in trial
     @suggest step_rate in trial
-    cfg = RNOConfig(n_hidden, n_layers, activation, Float32(learning_rate), step_rate, Float32(gamma_val), 1.0f-8, b_size, 50, 2.0f0)
+    cfg = RNOConfig(n_hidden, n_layers, activation, 20, Float32(learning_rate), step_rate, Float32(gamma_val), 1.0f-8, b_size, 50, 2.0f0)
     return run_trial(cfg, trial)
 end
 
@@ -59,7 +61,7 @@ function kan_rno_objective(trial)
     @suggest layer_norm in trial
     wavelet_names = [wav_one, wav_two, wav_three, wav_four, wav_five, wav_six][1:n_layers]
     cfg = KANRNOConfig(
-        n_hidden, n_layers, activation, wavelet_names, layer_norm,
+        n_hidden, n_layers, activation, wavelet_names, layer_norm, 20,
         Float32(learning_rate), step_rate, Float32(gamma_val), 1.0f-4, b_size, 15, 2.0f0
     )
     return run_trial(cfg, trial)
