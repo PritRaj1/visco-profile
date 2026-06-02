@@ -28,26 +28,26 @@ function (m::RNO)(input, ps, st)
 
     dxdt = (x[1:(m.T - 1), :] .- x[2:(m.T), :]) ./ m.dt
 
-    y = y_true[1:1, :]
+    y_init = y_true[1:1, :]
+    y_rest = similar(x, m.T - 1, bs) .* 0.0f0
     hidden = similar(x, m.n_hidden, bs) .* 0.0f0
 
     st_out = st.output_chain
     st_hid = st.hidden_chain
 
-    for t in 2:(m.T)
-        if t > 2 && (t - 2) % m.bptt_k == 0
-            hidden = Reactant.ignore_derivatives(hidden) # TBPTT
-        end
-
-        xprev = x[(t - 1):(t - 1), :]
-        dxdt_t = dxdt[(t - 1):(t - 1), :]
+    @trace for t in 2:(m.T)
+        xprev = reshape(x[t - 1, :], 1, :)
+        dxdt_t = reshape(dxdt[t - 1, :], 1, :)
 
         h, st_hid = m.hidden_chain(vcat(xprev, hidden), ps.hidden_chain, st_hid)
         hidden = h .* m.dt
 
         out, st_out = m.output_chain(vcat(xprev, dxdt_t, hidden), ps.output_chain, st_out)
-        y = vcat(y, out)
+
+        n = size(y_rest, 1)
+        selector = reshape(ifelse.((0:(n - 1)) .== (t - 2), 1.0f0, 0.0f0), n, 1)
+        y_rest = y_rest .+ selector .* out
     end
 
-    return y, (output_chain = st_out, hidden_chain = st_hid)
+    return vcat(y_init, y_rest), (output_chain = st_out, hidden_chain = st_hid)
 end

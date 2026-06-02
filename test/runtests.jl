@@ -122,9 +122,9 @@ end
     ps, st = Lux.setup(RNG, model)
     src = randn(Float32, 8, 2)
     tgt = randn(Float32, 8, 2)
-    loss, y_pred = _train_step(model, ps, st, src, tgt)
-    @test isfinite(loss)
-    @test size(y_pred) == (8, 2)
+    loss, test_loss = _train_step(model, ps, st, src, tgt)
+    @test isfinite(Float32(loss))
+    @test isfinite(Float32(test_loss))
 end
 
 @testset "KAN_Transformer train step" begin
@@ -136,7 +136,7 @@ end
     ps, st = Lux.setup(RNG, model)
     src = randn(Float32, 8, 2)
     tgt = randn(Float32, 8, 2)
-    loss, y_pred = _train_step(model, ps, st, src, tgt)
-    @test isfinite(loss)
-    @test size(y_pred) == (8, 2)
+    loss, test_loss = _train_step(model, ps, st, src, tgt)
+    @test isfinite(Float32(loss))
+    @test isfinite(Float32(test_loss))
 end

@@ -6,7 +6,7 @@ using NNlib
 using Optimisers
 using Random: AbstractRNG
 import Reactant
-using Reactant: @compile
+using Reactant: @compile, @trace
 
 include("utils.jl")
 include("config.jl")
