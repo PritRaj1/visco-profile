@@ -48,6 +48,7 @@ for rep in 1:NUM_REPETITIONS
         train_state, tl, vl = train_epoch(train_state, train_loader, test_loader, loss_fn, model, eval_fwd, epoch, cfg)
         bic = BIC(model, size(first(train_loader)[2], 1), vl)
         log_csv(epoch, tl, vl, bic, time() - start_time, log_file)
+        GC.gc()
     end
 
     ps_cpu = train_state.parameters |> cpu_device()
