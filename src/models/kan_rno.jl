@@ -60,9 +60,7 @@ function (m::KANRNO)(input, ps, st)
             st_out = merge(st_out, NamedTuple{(k,)}((st_out_k,)))
         end
 
-        n = size(y_rest, 1)
-        selector = reshape(ifelse.((0:(n - 1)) .== (t - 2), 1.0f0, 0.0f0), n, 1)
-        y_rest = y_rest .+ selector .* output
+        y_rest[t - 1, :] = vec(output)
     end
 
     return vcat(y_init, y_rest), (output_layers = st_out, hidden_layers = st_hid)

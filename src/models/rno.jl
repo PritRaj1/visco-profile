@@ -44,9 +44,7 @@ function (m::RNO)(input, ps, st)
 
         out, st_out = m.output_chain(vcat(xprev, dxdt_t, hidden), ps.output_chain, st_out)
 
-        n = size(y_rest, 1)
-        selector = reshape(ifelse.((0:(n - 1)) .== (t - 2), 1.0f0, 0.0f0), n, 1)
-        y_rest = y_rest .+ selector .* out
+        y_rest[t - 1, :] = vec(out)
     end
 
     return vcat(y_init, y_rest), (output_chain = st_out, hidden_chain = st_hid)
