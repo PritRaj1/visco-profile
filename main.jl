@@ -34,6 +34,7 @@ for rep in 1:NUM_REPETITIONS
     st = st |> dev
 
     train_state = Training.TrainState(model, ps, st, Optimisers.Adam(cfg.learning_rate))
+    eval_fwd = WavKANSequence.compile_eval(model, ps, st, test_loader)
 
     log_file = joinpath(log_dir, "repetition_$rep.csv")
     open(log_file, "w") do f
@@ -44,7 +45,7 @@ for rep in 1:NUM_REPETITIONS
     start_time = time()
 
     for epoch in ProgressBar(1:(cfg.num_epochs))
-        train_state, tl, vl = train_epoch(train_state, train_loader, test_loader, loss_fn, model, epoch, cfg)
+        train_state, tl, vl = train_epoch(train_state, train_loader, test_loader, loss_fn, model, eval_fwd, epoch, cfg)
         bic = BIC(model, size(first(train_loader)[2], 1), vl)
         log_csv(epoch, tl, vl, bic, time() - start_time, log_file)
     end
