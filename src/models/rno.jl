@@ -36,6 +36,11 @@ function (m::RNO)(input, ps, st)
     st_hid = st.hidden_chain
 
     @trace for t in 2:(m.T)
+        # TBPTT (truncate since constitutive law is Markovian anyway)
+        if t > 2 && (t - 2) % m.bptt_k == 0
+            hidden = Reactant.ignore_derivatives(hidden)
+        end
+
         xprev = reshape(x[t - 1, :], 1, :)
         dxdt_t = reshape(dxdt[t - 1, :], 1, :)
 
