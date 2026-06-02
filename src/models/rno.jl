@@ -4,6 +4,7 @@ struct RNO{O, H} <: Lux.AbstractLuxContainerLayer{(:output_chain, :hidden_chain)
     dt::Float32
     T::Int
     n_hidden::Int
+    bptt_k::Int
 end
 
 function RNO(cfg::RNOConfig, input_dim::Int, output_dim::Int, input_size::Int)
@@ -18,7 +19,7 @@ function RNO(cfg::RNOConfig, input_dim::Int, output_dim::Int, input_size::Int)
     push!(hid_layers, Lux.Dense(layer_hidden[end - 1] => layer_hidden[end]))
 
     dt = Float32(1 / (input_size - 1))
-    return RNO(Lux.Chain(out_layers...), Lux.Chain(hid_layers...), dt, input_size, cfg.n_hidden)
+    return RNO(Lux.Chain(out_layers...), Lux.Chain(hid_layers...), dt, input_size, cfg.n_hidden, cfg.bptt_k)
 end
 
 function (m::RNO)(input, ps, st)
@@ -34,6 +35,10 @@ function (m::RNO)(input, ps, st)
     st_hid = st.hidden_chain
 
     for t in 2:(m.T)
+        if t > 2 && (t - 2) % m.bptt_k == 0
+            hidden = Reactant.ignore_derivatives(hidden) # TBPTT
+        end
+
         xprev = x[(t - 1):(t - 1), :]
         dxdt_t = dxdt[(t - 1):(t - 1), :]
 

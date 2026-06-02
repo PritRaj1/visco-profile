@@ -50,7 +50,7 @@ end
 end
 
 @testset "RNO forward" begin
-    cfg = RNOConfig(4, 2, "relu", 1.0f-3, 10, 0.8f0, 1.0f-5, 2, 1, 2.0f0)
+    cfg = RNOConfig(4, 2, "relu", 4, 1.0f-3, 10, 0.8f0, 1.0f-5, 2, 1, 2.0f0)
     model = create_model(cfg, 20)
     ps, st = Lux.setup(RNG, model)
     x = randn(Float32, 20, 2)
@@ -60,7 +60,7 @@ end
 end
 
 @testset "KAN_RNO forward" begin
-    cfg = KANRNOConfig(4, 2, "relu", ["Morlet", "MexicanHat", "Shannon"], false, 1.0f-3, 10, 0.8f0, 1.0f-5, 2, 1, 2.0f0)
+    cfg = KANRNOConfig(4, 2, "relu", ["Morlet", "MexicanHat", "Shannon"], false, 4, 1.0f-3, 10, 0.8f0, 1.0f-5, 2, 1, 2.0f0)
     model = create_model(cfg, 20)
     ps, st = Lux.setup(RNG, model)
     x = randn(Float32, 20, 2)
@@ -93,7 +93,7 @@ end
 end
 
 @testset "RNO train step" begin
-    cfg = RNOConfig(4, 2, "relu", 1.0f-3, 10, 0.8f0, 1.0f-5, 2, 1, 2.0f0)
+    cfg = RNOConfig(4, 2, "relu", 4, 1.0f-3, 10, 0.8f0, 1.0f-5, 2, 1, 2.0f0)
     model = create_model(cfg, 8)
     ps, st = Lux.setup(RNG, model)
     x = randn(Float32, 8, 2)
@@ -104,7 +104,7 @@ end
 end
 
 @testset "KAN_RNO train step" begin
-    cfg = KANRNOConfig(4, 2, "relu", ["Morlet", "MexicanHat", "Shannon"], false, 1.0f-3, 10, 0.8f0, 1.0f-5, 2, 1, 2.0f0)
+    cfg = KANRNOConfig(4, 2, "relu", ["Morlet", "MexicanHat", "Shannon"], false, 4, 1.0f-3, 10, 0.8f0, 1.0f-5, 2, 1, 2.0f0)
     model = create_model(cfg, 8)
     ps, st = Lux.setup(RNG, model)
     x = randn(Float32, 8, 2)

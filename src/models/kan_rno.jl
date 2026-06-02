@@ -4,6 +4,7 @@ struct KANRNO{O, H} <: Lux.AbstractLuxContainerLayer{(:output_layers, :hidden_la
     dt::Float32
     T::Int
     n_hidden::Int
+    bptt_k::Int
 end
 
 function _make_named_layers(layers::Vector)
@@ -26,7 +27,7 @@ function KANRNO(cfg::KANRNOConfig, input_dim::Int, output_dim::Int, input_size::
     ]
 
     dt = Float32(1 / (input_size - 1))
-    return KANRNO(_make_named_layers(out_layers), _make_named_layers(hid_layers), dt, input_size, cfg.n_hidden)
+    return KANRNO(_make_named_layers(out_layers), _make_named_layers(hid_layers), dt, input_size, cfg.n_hidden, cfg.bptt_k)
 end
 
 function (m::KANRNO)(input, ps, st)
@@ -42,6 +43,10 @@ function (m::KANRNO)(input, ps, st)
     st_hid = st.hidden_layers
 
     for t in 2:(m.T)
+        if t > 2 && (t - 2) % m.bptt_k == 0
+            hidden = Reactant.ignore_derivatives(hidden) # TBPTT
+        end
+
         xprev = x[(t - 1):(t - 1), :]
         dxdt_t = dxdt[(t - 1):(t - 1), :]
 

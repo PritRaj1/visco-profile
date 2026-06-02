@@ -7,6 +7,7 @@ struct RNOConfig <: ModelConfig
     n_hidden::Int
     num_layers::Int
     activation::String
+    bptt_k::Int
     learning_rate::Float32
     step_rate::Int
     gamma::Float32
@@ -23,6 +24,7 @@ function RNOConfig(path::String)
         parse(Int, retrieve(conf, "Architecture", "n_hidden")),
         parse(Int, retrieve(conf, "Architecture", "num_layers")),
         retrieve(conf, "Architecture", "activation"),
+        haskey(conf, "Architecture", "bptt_k") ? parse(Int, retrieve(conf, "Architecture", "bptt_k")) : 20,
         parse(Float32, retrieve(conf, "Optimizer", "learning_rate")),
         parse(Int, retrieve(conf, "Optimizer", "step_rate")),
         parse(Float32, retrieve(conf, "Optimizer", "gamma")),
@@ -40,6 +42,7 @@ struct KANRNOConfig <: ModelConfig
     activation::String
     wavelet_names::Vector{String}
     norm::Bool
+    bptt_k::Int
     learning_rate::Float32
     step_rate::Int
     gamma::Float32
@@ -61,6 +64,7 @@ function KANRNOConfig(path::String)
         retrieve(conf, "Architecture", "activation"),
         wavelet_names,
         parse(Bool, retrieve(conf, "Architecture", "norm")),
+        haskey(conf, "Architecture", "bptt_k") ? parse(Int, retrieve(conf, "Architecture", "bptt_k")) : 20,
         parse(Float32, retrieve(conf, "Optimizer", "learning_rate")),
         parse(Int, retrieve(conf, "Optimizer", "step_rate")),
         parse(Float32, retrieve(conf, "Optimizer", "gamma")),

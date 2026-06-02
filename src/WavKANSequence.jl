@@ -5,6 +5,7 @@ using Lux: Training
 using NNlib
 using Optimisers
 using Random: AbstractRNG
+import Reactant
 using Reactant: @compile
 
 include("utils.jl")
