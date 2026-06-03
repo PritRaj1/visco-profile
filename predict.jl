@@ -9,6 +9,7 @@ using Plots; pythonplot()
 using MLDataDevices: reactant_device, cpu_device
 
 model_name = length(ARGS) >= 1 ? ARGS[1] : "KAN_RNO"
+rep = length(ARGS) >= 2 ? parse(Int, ARGS[2]) : 1
 cfg = load_config(model_name)
 dev = reactant_device()
 
@@ -19,7 +20,7 @@ model = create_model(cfg, input_size)
 rng = Random.default_rng()
 _, st = Lux.setup(rng, model)
 
-model_file = joinpath("logs", model_name, "trained_models", "model_1.jld2")
+model_file = joinpath("logs", model_name, "trained_models", "model_$rep.jld2")
 ps = JLD2.load(model_file, "ps") |> Lux.f32 |> dev
 st = st |> Lux.f32 |> dev
 
