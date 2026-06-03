@@ -43,24 +43,29 @@ function (m::KANRNO)(input, ps, st)
     st_out = st.output_layers
     st_hid = st.hidden_layers
 
-    @trace for t in 2:(m.T)
-        xprev = reshape(x[t - 1, :], 1, :)
-        dxdt_t = reshape(dxdt[t - 1, :], 1, :)
+    # TBPTT via chunked @trace for
+    for chunk_start in 2:m.bptt_k:m.T
+        chunk_end = min(chunk_start + m.bptt_k - 1, m.T)
+        @trace for t in chunk_start:chunk_end
+            xprev = reshape(x[t - 1, :], 1, :)
+            dxdt_t = reshape(dxdt[t - 1, :], 1, :)
 
-        h = vcat(xprev, hidden)
-        for (k, layer) in pairs(m.hidden_layers)
-            h, st_hid_k = layer(h, ps.hidden_layers[k], st_hid[k])
-            st_hid = merge(st_hid, NamedTuple{(k,)}((st_hid_k,)))
+            h = vcat(xprev, hidden)
+            for (k, layer) in pairs(m.hidden_layers)
+                h, st_hid_k = layer(h, ps.hidden_layers[k], st_hid[k])
+                st_hid = merge(st_hid, NamedTuple{(k,)}((st_hid_k,)))
+            end
+            hidden = hidden .+ h .* m.dt   # forward Euler accumulator (canonical RNO)
+
+            output = vcat(xprev, dxdt_t, hidden)
+            for (k, layer) in pairs(m.output_layers)
+                output, st_out_k = layer(output, ps.output_layers[k], st_out[k])
+                st_out = merge(st_out, NamedTuple{(k,)}((st_out_k,)))
+            end
+
+            y_rest[t - 1, :] = vec(output)
         end
-        hidden = h .* m.dt
-
-        output = vcat(xprev, dxdt_t, hidden)
-        for (k, layer) in pairs(m.output_layers)
-            output, st_out_k = layer(output, ps.output_layers[k], st_out[k])
-            st_out = merge(st_out, NamedTuple{(k,)}((st_out_k,)))
-        end
-
-        y_rest[t - 1, :] = vec(output)
+        chunk_end < m.T && (hidden = Reactant.ignore_derivatives(hidden))
     end
 
     return vcat(y_init, y_rest), (output_layers = st_out, hidden_layers = st_hid)

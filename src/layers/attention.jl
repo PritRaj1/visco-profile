@@ -1,37 +1,23 @@
-struct MultiHeadAttention{Q, K, V} <: Lux.AbstractLuxContainerLayer{(:Wq, :Wk, :Wv)}
+struct MultiHeadAttention{Q, K, V, O} <: Lux.AbstractLuxContainerLayer{(:Wq, :Wk, :Wv, :Wo)}
     Wq::Q
     Wk::K
     Wv::V
-    scale::Float32
-    query_scale::Float32
+    Wo::O
+    nhead::Int
 end
 
-function _make_projections(d_model, activation, kan_factory)
-    if kan_factory !== nothing
-        return kan_factory(d_model, d_model), kan_factory(d_model, d_model), kan_factory(d_model, d_model)
-    end
-    act = get_activation(activation)
-    return Lux.Dense(d_model => d_model, act), Lux.Dense(d_model => d_model, act), Lux.Dense(d_model => d_model, act)
-end
+_linear_proj(d_model, kan_factory) =
+    kan_factory === nothing ? Lux.Dense(d_model => d_model) : kan_factory(d_model, d_model)
 
-function _make_ff(d_model, dim_ff, activation, kan_factory)
-    if kan_factory !== nothing
-        return kan_factory(d_model, dim_ff), kan_factory(dim_ff, d_model)
-    end
-    act = get_activation(activation)
-    return Lux.Dense(d_model => dim_ff, act), Lux.Dense(dim_ff => d_model, act)
-end
-
-function MultiHeadAttention(d_model::Int, nhead::Int, activation::String; kan_factory = nothing)
-    Wq, Wk, Wv = _make_projections(d_model, activation, kan_factory)
-    return MultiHeadAttention(Wq, Wk, Wv, Float32(sqrt(d_model)), Float32((d_model / nhead)^(-0.5)))
-end
-
-function scaled_dot_product_attention(query, key, value, scale)
-    scores = query .* sum(key; dims = 2)
-    scores = scores ./ scale
-    p_attn = NNlib.softmax(scores; dims = 1)
-    return p_attn .* sum(value; dims = 2)
+function MultiHeadAttention(d_model::Int, nhead::Int; kan_factory = nothing)
+    @assert d_model % nhead == 0 "d_model ($d_model) must be divisible by nhead ($nhead)"
+    return MultiHeadAttention(
+        _linear_proj(d_model, kan_factory),
+        _linear_proj(d_model, kan_factory),
+        _linear_proj(d_model, kan_factory),
+        _linear_proj(d_model, kan_factory),
+        nhead,
+    )
 end
 
 function (m::MultiHeadAttention)(qkv, ps, st)
@@ -39,8 +25,17 @@ function (m::MultiHeadAttention)(qkv, ps, st)
     q, st_q = m.Wq(x, ps.Wq, st.Wq)
     k, st_k = m.Wk(y, ps.Wk, st.Wk)
     v, st_v = m.Wv(z, ps.Wv, st.Wv)
-    out = scaled_dot_product_attention(q .* m.query_scale, k, v, m.scale)
-    return out, (Wq = st_q, Wk = st_k, Wv = st_v)
+    attn_out, _ = NNlib.dot_product_attention(q, k, v; nheads = m.nhead)
+    out, st_o = m.Wo(attn_out, ps.Wo, st.Wo)
+    return out, (Wq = st_q, Wk = st_k, Wv = st_v, Wo = st_o)
+end
+
+function _make_ff(d_model, dim_ff, activation, kan_factory)
+    if kan_factory !== nothing
+        return kan_factory(d_model, dim_ff), kan_factory(dim_ff, d_model)
+    end
+    act = get_activation(activation)
+    return Lux.Dense(d_model => dim_ff, act), Lux.Dense(dim_ff => d_model)
 end
 
 struct EncoderLayer{A, F1, F2, N1, N2} <: Lux.AbstractLuxContainerLayer{(:self_attn, :ff1, :ff2, :norm1, :norm2)}
@@ -52,7 +47,7 @@ struct EncoderLayer{A, F1, F2, N1, N2} <: Lux.AbstractLuxContainerLayer{(:self_a
 end
 
 function EncoderLayer(d_model::Int, nhead::Int, dim_ff::Int, dropout::Float32, activation::String; kan_factory = nothing)
-    attn = MultiHeadAttention(d_model, nhead, activation; kan_factory)
+    attn = MultiHeadAttention(d_model, nhead; kan_factory)
     ff1, ff2 = _make_ff(d_model, dim_ff, activation, kan_factory)
     return EncoderLayer(attn, ff1, ff2, Lux.LayerNorm(d_model; dims = nothing), Lux.LayerNorm(d_model; dims = nothing))
 end
@@ -77,12 +72,12 @@ struct DecoderLayer{A1, A2, F1, F2, N1, N2, N3} <: Lux.AbstractLuxContainerLayer
 end
 
 function DecoderLayer(d_model::Int, nhead::Int, dim_ff::Int, dropout::Float32, activation::String; kan_factory = nothing)
-    self_a = MultiHeadAttention(d_model, nhead, activation; kan_factory)
-    cross_a = MultiHeadAttention(d_model, nhead, activation; kan_factory)
+    self_a = MultiHeadAttention(d_model, nhead; kan_factory)
+    cross_a = MultiHeadAttention(d_model, nhead; kan_factory)
     ff1, ff2 = _make_ff(d_model, dim_ff, activation, kan_factory)
     return DecoderLayer(
         self_a, cross_a, ff1, ff2,
-        Lux.LayerNorm(d_model; dims = nothing), Lux.LayerNorm(d_model; dims = nothing), Lux.LayerNorm(d_model; dims = nothing)
+        Lux.LayerNorm(d_model; dims = nothing), Lux.LayerNorm(d_model; dims = nothing), Lux.LayerNorm(d_model; dims = nothing),
     )
 end
 

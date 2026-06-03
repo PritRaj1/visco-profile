@@ -44,7 +44,7 @@ end
 end
 
 @testset "Attention" begin
-    mha = WavKANSequence.MultiHeadAttention(6, 2, "relu")
+    mha = WavKANSequence.MultiHeadAttention(6, 2)
     ps, st = Lux.setup(RNG, mha)
     x = randn(Float32, 6, 10, 2)  # (d_model, seq, batch)
     y, _ = mha((x, x, x), ps, st)

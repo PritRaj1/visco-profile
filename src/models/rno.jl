@@ -35,16 +35,22 @@ function (m::RNO)(input, ps, st)
     st_out = st.output_chain
     st_hid = st.hidden_chain
 
-    @trace for t in 2:(m.T)
-        xprev = reshape(x[t - 1, :], 1, :)
-        dxdt_t = reshape(dxdt[t - 1, :], 1, :)
+    # TBPTT: each chunk is one stablehlo.while, ignore_derivatives between
+    # keeps per-chunk activation cache stays bounded at O(bptt_k).
+    for chunk_start in 2:m.bptt_k:m.T
+        chunk_end = min(chunk_start + m.bptt_k - 1, m.T)
+        @trace for t in chunk_start:chunk_end
+            xprev = reshape(x[t - 1, :], 1, :)
+            dxdt_t = reshape(dxdt[t - 1, :], 1, :)
 
-        h, st_hid = m.hidden_chain(vcat(xprev, hidden), ps.hidden_chain, st_hid)
-        hidden = h .* m.dt
+            h, st_hid = m.hidden_chain(vcat(xprev, hidden), ps.hidden_chain, st_hid)
+            hidden = hidden .+ h .* m.dt   # forward Euler accumulator (canonical RNO)
 
-        out, st_out = m.output_chain(vcat(xprev, dxdt_t, hidden), ps.output_chain, st_out)
+            out, st_out = m.output_chain(vcat(xprev, dxdt_t, hidden), ps.output_chain, st_out)
 
-        y_rest[t - 1, :] = vec(out)
+            y_rest[t - 1, :] = vec(out)
+        end
+        chunk_end < m.T && (hidden = Reactant.ignore_derivatives(hidden))
     end
 
     return vcat(y_init, y_rest), (output_chain = st_out, hidden_chain = st_hid)
