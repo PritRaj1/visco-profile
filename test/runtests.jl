@@ -10,11 +10,11 @@ const RNG = Xoshiro(0)
 const DEV = reactant_device()
 
 function _train_step(model, ps, st, x, y)
-    ps = ps |> DEV
-    st = st |> DEV
+    ps = ps |> Lux.f32 |> DEV
+    st = st |> Lux.f32 |> DEV
     x = x |> DEV
     y = y |> DEV
-    train_state = Training.TrainState(model, ps, st, Optimisers.Adam(1.0f-3))
+    train_state = Training.TrainState(model, ps, st, Optimisers.Adam(1.0f-3, (0.9f0, 0.999f0), 1.0f-8))
     objective(model, ps, st, (x, y)) = (loss_fcn(model((x, y), ps, st)[1], y), st, (;))
     _, loss, _, train_state = Training.single_train_step!(
         AutoEnzyme(), objective, (x, y), train_state,

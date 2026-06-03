@@ -19,8 +19,8 @@ function run_trial(cfg::ModelConfig, trial)
     input_size = size(first(train_loader)[2], 1)
     model = create_model(cfg, input_size)
     ps, st = Lux.setup(Random.default_rng(), model)
-    ps, st = ps |> dev, st |> dev
-    train_state = Training.TrainState(model, ps, st, Optimisers.Adam(cfg.learning_rate))
+    ps, st = ps |> Lux.f32 |> dev, st |> Lux.f32 |> dev
+    train_state = Training.TrainState(model, ps, st, Optimisers.Adam(cfg.learning_rate, (0.9f0, 0.999f0), 1.0f-8))
     loss_fn(yp, y) = loss_fcn(yp, y; p = cfg.p)
     eval_fwd = WavKANSequence.compile_eval(model, ps, st, test_loader, loss_fn)
     test_loss = 0.0

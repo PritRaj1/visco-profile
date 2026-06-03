@@ -30,10 +30,10 @@ for rep in 1:NUM_REPETITIONS
     Random.seed!(rep)
     model = create_model(cfg, input_size)
     ps, st = Lux.setup(rng, model)
-    ps = ps |> dev
-    st = st |> dev
+    ps = ps |> Lux.f32 |> dev
+    st = st |> Lux.f32 |> dev
 
-    train_state = Training.TrainState(model, ps, st, Optimisers.Adam(cfg.learning_rate))
+    train_state = Training.TrainState(model, ps, st, Optimisers.Adam(cfg.learning_rate, (0.9f0, 0.999f0), 1.0f-8))
 
     log_file = joinpath(log_dir, "repetition_$rep.csv")
     open(log_file, "w") do f
