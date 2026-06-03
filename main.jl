@@ -12,9 +12,8 @@ using ProgressBars
 using JLD2
 using MLDataDevices: reactant_device, cpu_device
 
-const NUM_REPETITIONS = 5
-
 model_name = length(ARGS) >= 1 ? ARGS[1] : "RNO"
+rep = length(ARGS) >= 2 ? parse(Int, ARGS[2]) : 1
 cfg = load_config(model_name)
 dev = reactant_device()
 
@@ -26,31 +25,29 @@ log_dir = joinpath("logs", model_name)
 model_dir = joinpath(log_dir, "trained_models")
 mkpath(model_dir)
 
-for rep in 1:NUM_REPETITIONS
-    Random.seed!(rep)
-    model = create_model(cfg, input_size)
-    ps, st = Lux.setup(rng, model)
-    ps = ps |> Lux.f32 |> dev
-    st = st |> Lux.f32 |> dev
+Random.seed!(rep)
+model = create_model(cfg, input_size)
+ps, st = Lux.setup(rng, model)
+ps = ps |> Lux.f32 |> dev
+st = st |> Lux.f32 |> dev
 
-    train_state = Training.TrainState(model, ps, st, Optimisers.Adam(cfg.learning_rate, (0.9f0, 0.999f0), 1.0f-8))
+train_state = Training.TrainState(model, ps, st, Optimisers.Adam(cfg.learning_rate, (0.9f0, 0.999f0), 1.0f-8))
 
-    log_file = joinpath(log_dir, "repetition_$rep.csv")
-    open(log_file, "w") do f
-        write(f, "Epoch,Time (s),Train Loss,Test Loss,BIC\n")
-    end
-
-    loss_fn(y_pred, y) = loss_fcn(y_pred, y; p = cfg.p)
-    eval_fwd = WavKANSequence.compile_eval(model, ps, st, test_loader, loss_fn)
-    start_time = time()
-
-    for epoch in ProgressBar(1:(cfg.num_epochs))
-        train_state, tl, vl = train_epoch(train_state, train_loader, test_loader, loss_fn, model, eval_fwd, epoch, cfg)
-        bic = BIC(model, size(first(train_loader)[2], 1), vl)
-        log_csv(epoch, tl, vl, bic, time() - start_time, log_file)
-        GC.gc()
-    end
-
-    ps_cpu = train_state.parameters |> cpu_device()
-    jldsave(joinpath(model_dir, "model_$rep.jld2"); ps = ps_cpu, model_name = model_name)
+log_file = joinpath(log_dir, "repetition_$rep.csv")
+open(log_file, "w") do f
+    write(f, "Epoch,Time (s),Train Loss,Test Loss,BIC\n")
 end
+
+loss_fn(y_pred, y) = loss_fcn(y_pred, y; p = cfg.p)
+eval_fwd = WavKANSequence.compile_eval(model, ps, st, test_loader, loss_fn)
+start_time = time()
+
+for epoch in ProgressBar(1:(cfg.num_epochs))
+    global train_state, tl, vl = train_epoch(train_state, train_loader, test_loader, loss_fn, model, eval_fwd, epoch, cfg)
+    bic = BIC(model, size(first(train_loader)[2], 1), vl)
+    log_csv(epoch, tl, vl, bic, time() - start_time, log_file)
+    GC.gc()
+end
+
+ps_cpu = train_state.parameters |> cpu_device()
+jldsave(joinpath(model_dir, "model_$rep.jld2"); ps = ps_cpu, model_name = model_name)
