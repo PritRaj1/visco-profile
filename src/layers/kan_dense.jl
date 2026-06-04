@@ -7,11 +7,7 @@ end
 
 function KANdense(in_dims::Int, out_dims::Int, wavelet_name::String, base_activation::String = "relu"; norm::Bool = false, is_2d::Bool = false)
     wavelet = create_wavelet(wavelet_name, in_dims, out_dims)
-    norm_layer = if norm
-        is_2d ? Lux.BatchNorm(out_dims) : Lux.LayerNorm(out_dims)
-    else
-        Lux.WrappedFunction(identity)
-    end
+    norm_layer = norm ? Lux.BatchNorm(out_dims) : Lux.WrappedFunction(identity)
     return KANdense(wavelet, norm_layer, in_dims, out_dims)
 end
 
@@ -32,14 +28,9 @@ _unsqueeze(x::AbstractArray{T, 3}) where {T} =
 function (l::KANdense)(x, ps, st)
     x_exp = (_unsqueeze(x) .- ps.translation) ./ ps.scale
     y, st_t = l.transform(x_exp, ps.transform, st.transform)
-
-    if ndims(y) == 4
-        y_perm = reshape(y, size(y, 2), size(y, 1), size(y, 3))
-        y_normed, st_n = l.norm_layer(y_perm, ps.norm_layer, st.norm_layer)
-        out = reshape(y_normed, size(y, 1), size(y, 2), size(y, 3))
-    else
-        out, st_n = l.norm_layer(y, ps.norm_layer, st.norm_layer)
-    end
-
+    orig_size = size(y)
+    y_flat = reshape(y, l.out_dims, :)
+    y_n_flat, st_n = l.norm_layer(y_flat, ps.norm_layer, st.norm_layer)
+    out = ndims(y) == 2 ? y_n_flat : reshape(y_n_flat, orig_size)
     return out, (transform = st_t, norm_layer = st_n)
 end

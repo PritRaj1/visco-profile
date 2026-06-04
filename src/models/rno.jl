@@ -26,8 +26,7 @@ function (m::RNO)(input, ps, st)
     x, y_true = input
     bs = size(x)[end]
 
-    dxdt = (x[1:(m.T - 1), :] .- x[2:(m.T), :]) ./ m.dt
-
+    dxdt = (x[2:(m.T), :] .- x[1:(m.T - 1), :]) ./ m.dt
     y_init = y_true[1:1, :]
     y_rest = fill!(similar(x, m.T - 1, bs), 0.0f0)
     hidden = fill!(similar(x, m.n_hidden, bs), 0.0f0)
@@ -35,19 +34,16 @@ function (m::RNO)(input, ps, st)
     st_out = st.output_chain
     st_hid = st.hidden_chain
 
-    # TBPTT: each chunk is one stablehlo.while, ignore_derivatives between
-    # keeps per-chunk activation cache stays bounded at O(bptt_k).
     for chunk_start in 2:m.bptt_k:m.T
         chunk_end = min(chunk_start + m.bptt_k - 1, m.T)
         @trace for t in chunk_start:chunk_end
-            xprev = reshape(x[t - 1, :], 1, :)
-            dxdt_t = reshape(dxdt[t - 1, :], 1, :)
+            xcurr = reshape(x[t, :], 1, :)
+            dxdt_t = reshape(dxdt[t - 1, :], 1, :) # = (x[t] - x[t-1]) / dt
 
-            h, st_hid = m.hidden_chain(vcat(xprev, hidden), ps.hidden_chain, st_hid)
-            hidden = hidden .+ h .* m.dt   # forward Euler accumulator
+            h, st_hid = m.hidden_chain(vcat(xcurr, hidden), ps.hidden_chain, st_hid)
+            hidden = hidden .+ h .* m.dt # z^n = z^(n-1) + dt * g(F^n, z^(n-1))
 
-            out, st_out = m.output_chain(vcat(xprev, dxdt_t, hidden), ps.output_chain, st_out)
-
+            out, st_out = m.output_chain(vcat(xcurr, dxdt_t, hidden), ps.output_chain, st_out)
             y_rest[t - 1, :] = vec(out)
         end
         chunk_end < m.T && (hidden = Reactant.ignore_derivatives(hidden))
