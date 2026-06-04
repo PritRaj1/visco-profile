@@ -1,8 +1,8 @@
 [dependencies]
 openssl = ">=3, <3.6"
-libstdcxx = ">=3.4,<=15.1"
+libstdcxx = ">=3.4,<15.0"
 uv = ">=0.4"
-libstdcxx-ng = ">=3.4,<=15.1"
+libstdcxx-ng = ">=3.4,<15.0"
 matplotlib = ">=1"
 
     [dependencies.python]
