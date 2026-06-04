@@ -46,53 +46,131 @@ for (idx, mname) in enumerate(MODEL_NAMES)
     push!(
         results, (
             Model = PLOT_NAMES[idx],
-            train_loss = @sprintf("%.2g +/- %.2g", mean(tl), std(tl)),
-            test_loss = @sprintf("%.2g +/- %.2g", mean(vl), std(vl)),
-            BIC = @sprintf("%.2g +/- %.2g", mean(bic_vals), std(bic_vals)),
-            time = @sprintf("%.2g +/- %.2g", mean(times), std(times)),
-            param_count = string(n_params),
+            train_loss = @sprintf("%.2g ± %.2g", mean(tl), std(tl)),
+            test_loss = @sprintf("%.2g ± %.2g", mean(vl), std(vl)),
+            BIC = @sprintf("%.2g ± %.2g", mean(bic_vals), std(bic_vals)),
+            time = @sprintf("%.2g ± %.2g", mean(times), std(times)),
+            param_count = replace(string(n_params), r"(?<=\d)(?=(\d{3})+$)" => ","),
         )
     )
 end
 
 mkpath("figures")
 
+zebra = [iseven(i) ? "#f3f5f8" : "white" for i in 1:nrow(results)]
 table_plot = plot(
     PlotlyJS.table(;
+        columnwidth = [1.4, 1.0, 1.4, 1.4, 1.4, 1.1],
         header = attr(;
-            values = ["Model", "Train Loss", "Test Loss", "BIC", "Time (mins)", "Param Count"],
-            align = "center", line_color = "darkslategray", fill_color = "grey",
-            font = attr(; family = "Computer Modern", color = "white", size = 13),
+            values = [
+                "<b>Model</b>", "<b>Params</b>", "<b>Train Loss</b>",
+                "<b>Test Loss</b>", "<b>BIC</b>", "<b>Time (mins)</b>",
+            ],
+            align = ["left", "right", "center", "center", "center", "center"],
+            line_color = "#2a3f55",
+            fill_color = "#2a3f55",
+            font = attr(; family = "Computer Modern, Latin Modern Roman, serif", color = "white", size = 15),
+            height = 36,
         ),
         cells = attr(;
             values = [
-                PLOT_NAMES[1:nrow(results)], results.train_loss, results.test_loss,
-                results.BIC, results.time, results.param_count,
+                PLOT_NAMES[1:nrow(results)],
+                results.param_count,
+                results.train_loss,
+                results.test_loss,
+                results.BIC,
+                results.time,
             ],
-            line_color = "darkslategray", align = "center",
-            fill_color = [["lightgrey", "white", "lightgrey", "white"]],
-            font = attr(; family = "Computer Modern", size = 12, color = "black"),
+            align = ["left", "right", "center", "center", "center", "center"],
+            line_color = "#cbd5dc",
+            fill_color = [zebra for _ in 1:6],
+            font = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 14, color = "#1a1a1a"),
+            height = 32,
         ),
     ),
     Layout(;
-        autosize = true,
-        title = attr(; text = "Loss and BIC for Different Models", x = 0.5),
-        font = attr(; family = "Computer Modern", size = 12),
-        margin = attr(; b = 0, t = 200, l = 5, r = 5),
+        title = attr(;
+            text = "Final-epoch metrics across 5 seeds",
+            x = 0.5, xanchor = "center",
+            font = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 18, color = "#1a1a1a"),
+        ),
+        font = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 13),
+        margin = attr(; l = 30, r = 30, t = 80, b = 30),
+        width = 1000,
+        height = 80 + 36 + 32 * nrow(results) + 30,
+        paper_bgcolor = "white",
     ),
 )
 
-savefig(table_plot, "figures/loss_table.png")
+savefig(table_plot, "figures/loss_table.png"; width = 1000, height = 80 + 36 + 32 * nrow(results) + 30)
 
-function make_box(df, name; log_y::Bool)
-    data = [box(; y = Float64.(df[df.model .== pn, :value]), name = pn) for pn in PLOT_NAMES if pn in df.model]
-    layout = log_y ?
-        Layout(; title = name, xaxis_title = "Model", yaxis_title = name, yaxis_type = "log") :
-        Layout(; title = name, xaxis_title = "Model", yaxis_title = name)
-    return savefig(plot(data, layout), "figures/$(name).png")
+const PALETTE = ["#4c72b0", "#dd8452", "#55a868", "#c44e52"]
+
+function make_strip(df, name; log_y::Bool)
+    present = [pn for pn in PLOT_NAMES if pn in df.model]
+    traces = []
+    shapes = []
+
+    for (i, pn) in enumerate(present)
+        vals = Float64.(df[df.model .== pn, :value])
+        n = length(vals)
+        x_jit = collect(i .+ range(-0.15, 0.15; length = n))   # deterministic spread
+
+        push!(
+            traces, scatter(;
+                x = x_jit, y = vals,
+                mode = "markers",
+                marker = attr(;
+                    size = 12, opacity = 0.9, color = PALETTE[i],
+                    line = attr(; width = 1.2, color = "white"),
+                ),
+                name = pn, showlegend = false, hoverinfo = "y+name",
+            )
+        )
+
+        med = median(vals)
+        push!(
+            shapes, attr(;
+                type = "line",
+                x0 = i - 0.3, x1 = i + 0.3, y0 = med, y1 = med,
+                xref = "x", yref = "y",
+                line = attr(; width = 4, color = PALETTE[i]),
+            )
+        )
+    end
+
+    layout = Layout(;
+        title = attr(;
+            text = name, x = 0.5, xanchor = "center",
+            font = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 18, color = "#1a1a1a"),
+        ),
+        xaxis = attr(;
+            title = "Model",
+            tickmode = "array",
+            tickvals = collect(1:length(present)),
+            ticktext = present,
+            range = [0.5, length(present) + 0.5],
+            showgrid = false,
+            tickfont = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 13),
+        ),
+        yaxis = attr(;
+            title = name,
+            type = log_y ? "log" : "linear",
+            gridcolor = "#e6e8eb", zerolinecolor = "#cbd5dc",
+            tickfont = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 13),
+        ),
+        shapes = shapes,
+        showlegend = false,
+        font = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 14),
+        width = 800, height = 500,
+        margin = attr(; l = 80, r = 30, t = 80, b = 70),
+        paper_bgcolor = "white", plot_bgcolor = "white",
+    )
+
+    return savefig(plot(traces, layout), "figures/$(name).png"; width = 800, height = 500)
 end
 
-make_box(box_data["train"], "Train Loss"; log_y = true)
-make_box(box_data["test"], "Test Loss"; log_y = true)
-make_box(box_data["BIC"], "BIC"; log_y = true)
-make_box(box_data["time"], "Time (mins)"; log_y = false)
+make_strip(box_data["train"], "Train Loss"; log_y = true)
+make_strip(box_data["test"], "Test Loss"; log_y = true)
+make_strip(box_data["BIC"], "BIC"; log_y = true)
+make_strip(box_data["time"], "Time (mins)"; log_y = false)
