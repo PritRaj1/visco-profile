@@ -38,8 +38,8 @@ where $E(x)$ is Young's modulus and $v(x)$ is viscosity, both piecewise constant
 <td align="center"><img src="figures/RNO_visco_prediction.gif" width="100%"></td>
 </tr>
 <tr>
-<td align="center"><em>Transformer. 4,209,205 params, purely data-driven</em></td>
-<td align="center"><em>Recurrent Neural Operator. 52 params + inductive bias</em></td>
+<td align="center"><em>Transformer. 4,257,391 params, purely data-driven (8.2 min/run)</em></td>
+<td align="center"><em>Recurrent Neural Operator. 39 params + inductive bias (6.9 min/run)</em></td>
 </tr>
 </table>
 

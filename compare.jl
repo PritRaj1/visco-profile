@@ -2,7 +2,7 @@ include("src/WavKANSequence.jl")
 
 using .WavKANSequence
 using CSV, DataFrames, Statistics, Printf, PlotlyJS, Lux
-using PlotlyJS: box, plot
+using PlotlyJS: bar, plot
 
 const MODEL_NAMES = ["RNO", "KAN_RNO", "Transformer", "KAN_Transformer"]
 const PLOT_NAMES = ["MLP RNO", "wavKAN RNO", "MLP Transformer", "wavKAN Transformer"]
@@ -106,38 +106,37 @@ savefig(table_plot, "figures/loss_table.png"; width = 1000, height = 80 + 36 + 3
 
 const PALETTE = ["#4c72b0", "#dd8452", "#55a868", "#c44e52"]
 
-function make_strip(df, name; log_y::Bool)
+function make_bar(df, name; log_y::Bool)
     present = [pn for pn in PLOT_NAMES if pn in df.model]
-    traces = []
-    shapes = []
+    means = [mean(Float64.(df[df.model .== pn, :value])) for pn in present]
+    stds = [std(Float64.(df[df.model .== pn, :value])) for pn in present]
+    labels = [@sprintf("%.2g ± %.2g", m, s) for (m, s) in zip(means, stds)]
 
-    for (i, pn) in enumerate(present)
-        vals = Float64.(df[df.model .== pn, :value])
-        n = length(vals)
-        x_jit = collect(i .+ range(-0.15, 0.15; length = n))   # deterministic spread
+    trace = bar(;
+        x = present, y = means,
+        error_y = attr(;
+            type = "data", array = stds, visible = true,
+            thickness = 1.6, width = 10, color = "#1a1a1a",
+        ),
+        marker = attr(;
+            color = PALETTE[1:length(present)],
+            line = attr(; color = "white", width = 1.5),
+        ),
+        showlegend = false,
+        cliponaxis = false,
+    )
 
-        push!(
-            traces, scatter(;
-                x = x_jit, y = vals,
-                mode = "markers",
-                marker = attr(;
-                    size = 12, opacity = 0.9, color = PALETTE[i],
-                    line = attr(; width = 1.2, color = "white"),
-                ),
-                name = pn, showlegend = false, hoverinfo = "y+name",
-            )
-        )
-
-        med = median(vals)
-        push!(
-            shapes, attr(;
-                type = "line",
-                x0 = i - 0.3, x1 = i + 0.3, y0 = med, y1 = med,
+    # Annotate above error-bar (mean + std)
+    annotations = [
+        attr(;
+                x = present[i], y = means[i] + stds[i],
                 xref = "x", yref = "y",
-                line = attr(; width = 4, color = PALETTE[i]),
+                text = labels[i], showarrow = false,
+                yanchor = "bottom", yshift = 6,
+                font = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 13, color = "#1a1a1a"),
             )
-        )
-    end
+            for i in 1:length(present)
+    ]
 
     layout = Layout(;
         title = attr(;
@@ -145,32 +144,33 @@ function make_strip(df, name; log_y::Bool)
             font = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 18, color = "#1a1a1a"),
         ),
         xaxis = attr(;
-            title = "Model",
-            tickmode = "array",
-            tickvals = collect(1:length(present)),
-            ticktext = present,
-            range = [0.5, length(present) + 0.5],
-            showgrid = false,
+            title = "Model", showgrid = false, showline = true, linecolor = "#cbd5dc",
             tickfont = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 13),
         ),
         yaxis = attr(;
             title = name,
             type = log_y ? "log" : "linear",
-            gridcolor = "#e6e8eb", zerolinecolor = "#cbd5dc",
+            dtick = log_y ? 1 : nothing,         # log: decade-only ticks (10⁰, 10¹, …); linear: auto
+            minor = log_y ? attr(; showgrid = false, ticks = "") : nothing,
+            gridcolor = "#e6e8eb", griddash = "dash",
+            zeroline = !log_y, zerolinecolor = "#cbd5dc",
+            showline = true, linecolor = "#cbd5dc",
             tickfont = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 13),
+            automargin = true,
         ),
-        shapes = shapes,
         showlegend = false,
         font = attr(; family = "Computer Modern, Latin Modern Roman, serif", size = 14),
         width = 800, height = 500,
-        margin = attr(; l = 80, r = 30, t = 80, b = 70),
+        margin = attr(; l = 90, r = 40, t = 90, b = 80),
         paper_bgcolor = "white", plot_bgcolor = "white",
+        bargap = 0.35,
+        annotations = annotations,
     )
 
-    return savefig(plot(traces, layout), "figures/$(name).png"; width = 800, height = 500)
+    return savefig(plot(trace, layout), "figures/$(name).png"; width = 800, height = 500)
 end
 
-make_strip(box_data["train"], "Train Loss"; log_y = true)
-make_strip(box_data["test"], "Test Loss"; log_y = true)
-make_strip(box_data["BIC"], "BIC"; log_y = true)
-make_strip(box_data["time"], "Time (mins)"; log_y = false)
+make_bar(box_data["train"], "Train Loss"; log_y = false)
+make_bar(box_data["test"], "Test Loss"; log_y = false)
+make_bar(box_data["BIC"], "BIC"; log_y = false)
+make_bar(box_data["time"], "Time (mins)"; log_y = false)
