@@ -23,7 +23,5 @@ function Transformer(cfg::TransformerConfig)
 end
 
 function (m::Transformer)(input, ps, st)
-    pred, new_st = _transformer_forward(m, input, ps, st)
-    pred = (NNlib.hardtanh(pred) .* 0.5f0) .+ 0.5f0
-    return pred, new_st
+    return _transformer_forward(m, input, ps, st)
 end
