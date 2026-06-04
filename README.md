@@ -2,7 +2,7 @@
 
 MLP and Wavelet KAN implementations of the Transformer and Recurrent Neural Operator (RNO) in Julia, applied to a 1D viscoelastic unit cell problem (strain-to-stress mapping).
 
-Built with [Lux.jl](https://github.com/LuxDL/Lux.jl) and [Reactant.jl](https://github.com/EnzymeAD/Reactant.jl). To be benchmarked on XPUs, [stay tuned](https://zscc.ai/).
+Built with [Lux.jl](https://github.com/LuxDL/Lux.jl) and [Reactant.jl](https://github.com/EnzymeAD/Reactant.jl).
 
 ## Usage
 
