@@ -90,5 +90,5 @@ function (l::DecoderLayer)(input, ps, st)
     ff_out, st_f1 = l.ff1(x2, ps.ff1, st.ff1)
     ff_out, st_f2 = l.ff2(ff_out, ps.ff2, st.ff2)
     out, st_n3 = l.norm3(x2 .+ ff_out, ps.norm3, st.norm3)
-    return out, (self_attn = st_sa, cross_attn = st_ca, ff1 = st_f1, ff2 = st_f2, norm1 = st_n1, norm2 = st_n2, norm3 = st_n3)
+    return (out, memory), (self_attn = st_sa, cross_attn = st_ca, ff1 = st_f1, ff2 = st_f2, norm1 = st_n1, norm2 = st_n2, norm3 = st_n3)
 end

@@ -7,17 +7,17 @@ end
 
 function Transformer(cfg::TransformerConfig)
     pe = PositionalEncoding(cfg.d_model, cfg.max_len)
-    enc = _make_named_layers(
-        [
+    enc = Lux.Chain(
+        (
             EncoderLayer(cfg.d_model, cfg.nhead, cfg.dim_feedforward, cfg.dropout, cfg.activation)
                 for _ in 1:(cfg.num_encoder_layers)
-        ]
+        )...,
     )
-    dec = _make_named_layers(
-        [
+    dec = Lux.Chain(
+        (
             DecoderLayer(cfg.d_model, cfg.nhead, cfg.dim_feedforward, cfg.dropout, cfg.activation)
                 for _ in 1:(cfg.num_decoder_layers)
-        ]
+        )...,
     )
     return Transformer(pe, enc, dec, Lux.Dense(cfg.d_model => 1))
 end
