@@ -24,17 +24,13 @@ function Lux.initialparameters(rng::AbstractRNG, l::KANdense)
     )
 end
 
-_expand(x::AbstractArray{T, 2}, out_dims) where {T} =
-    repeat(reshape(x, size(x, 1), 1, size(x, 2)), 1, out_dims, 1)
-_expand(x::AbstractArray{T, 3}, out_dims) where {T} =
-    repeat(reshape(x, size(x, 1), 1, size(x, 2), size(x, 3)), 1, out_dims, 1, 1)
+_unsqueeze(x::AbstractArray{T, 2}) where {T} =
+    reshape(x, size(x, 1), 1, size(x, 2))
+_unsqueeze(x::AbstractArray{T, 3}) where {T} =
+    reshape(x, size(x, 1), 1, size(x, 2), size(x, 3))
 
 function (l::KANdense)(x, ps, st)
-    x_exp = _expand(x, l.out_dims)
-    trans = repeat(ps.translation, 1, 1, size(x_exp)[3:end]...)
-    sc = repeat(ps.scale, 1, 1, size(x_exp)[3:end]...)
-    x_exp = (x_exp .- trans) ./ sc
-
+    x_exp = (_unsqueeze(x) .- ps.translation) ./ ps.scale
     y, st_t = l.transform(x_exp, ps.transform, st.transform)
 
     if ndims(y) == 4

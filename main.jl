@@ -42,10 +42,12 @@ loss_fn(y_pred, y) = loss_fcn(y_pred, y; p = cfg.p)
 eval_fwd = WavKANSequence.compile_eval(model, ps, st, test_loader, loss_fn)
 start_time = time()
 
+n_params = Lux.parameterlength(model)
+n_samples = size(first(train_loader)[2], 1)
+
 for epoch in ProgressBar(1:(cfg.num_epochs))
     global train_state, tl, vl = train_epoch(train_state, train_loader, test_loader, loss_fn, model, eval_fwd, epoch, cfg)
-    bic = BIC(model, size(first(train_loader)[2], 1), vl)
-    log_csv(epoch, tl, vl, bic, time() - start_time, log_file)
+    log_csv(epoch, tl, vl, BIC(n_params, n_samples, vl), time() - start_time, log_file)
     GC.gc()
 end
 

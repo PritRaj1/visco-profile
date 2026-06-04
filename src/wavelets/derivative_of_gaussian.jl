@@ -10,6 +10,6 @@ function Lux.initialparameters(rng::AbstractRNG, l::DoGWavelet)
 end
 
 function (l::DoGWavelet)(x, ps, st)
-    y = batch_mul(x, exp.(x .* -0.5f0)) .* DOG_NORM
+    y = x .* exp.(-0.5f0 .* x .* x) .* DOG_NORM
     return node_mul(y, ps.weights), st
 end

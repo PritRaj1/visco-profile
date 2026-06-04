@@ -69,11 +69,12 @@ end
 
 function transformer_objective(trial)
     Random.seed!(get_seed(trial))
-    @suggest d_model in trial; @suggest nhead in trial; @suggest dim_feedforward in trial
+    @suggest nhead in trial; @suggest head_dim in trial; @suggest dim_feedforward in trial
     @suggest dropout in trial; @suggest num_encoder_layers in trial
     @suggest num_decoder_layers in trial; @suggest max_len in trial
     @suggest activation in trial; @suggest b_size in trial
     @suggest learning_rate in trial; @suggest gamma_val in trial; @suggest step_rate in trial
+    d_model = nhead * head_dim
     cfg = TransformerConfig(
         d_model, nhead, dim_feedforward, Float32(dropout),
         num_encoder_layers, num_decoder_layers, max_len, activation,
@@ -84,7 +85,7 @@ end
 
 function kan_transformer_objective(trial)
     Random.seed!(get_seed(trial))
-    @suggest d_model in trial; @suggest nhead in trial; @suggest dim_feedforward in trial
+    @suggest nhead in trial; @suggest head_dim in trial; @suggest dim_feedforward in trial
     @suggest dropout in trial; @suggest num_encoder_layers in trial
     @suggest num_decoder_layers in trial; @suggest max_len in trial
     @suggest activation in trial; @suggest b_size in trial
@@ -100,6 +101,7 @@ function kan_transformer_objective(trial)
         encoder_wav_five, encoder_wav_six, encoder_wav_seven, encoder_wav_eight,
     ][1:num_encoder_layers]
     dec_wavs = [decoder_wav_one, decoder_wav_two, decoder_wav_three][1:num_decoder_layers]
+    d_model = nhead * head_dim
     cfg = KANTransformerConfig(
         d_model, nhead, dim_feedforward, Float32(dropout),
         num_encoder_layers, num_decoder_layers, max_len, activation,
@@ -129,7 +131,7 @@ spaces = Dict(
     ),
     "Transformer" => (
         transformer_objective, Scenario(
-            d_model = range(64, 192; step = 2), nhead = 1:20, dim_feedforward = 500:1200,
+            nhead = 1:8, head_dim = 8:24, dim_feedforward = 500:1200,
             dropout = (0.1 .. 0.9), num_encoder_layers = 2:8, num_decoder_layers = 1:3,
             max_len = 1000:5000, activation = ACTIVATIONS,
             b_size = 1:20, learning_rate = (1.0e-4 .. 1.0e-1), gamma_val = (0.1 .. 0.9), step_rate = 10:40,
@@ -138,7 +140,7 @@ spaces = Dict(
     ),
     "KAN_Transformer" => (
         kan_transformer_objective, Scenario(
-            d_model = range(10, 60; step = 2), nhead = 1:10, dim_feedforward = 300:500,
+            nhead = 1:6, head_dim = 2:10, dim_feedforward = 300:500,
             dropout = (0.1 .. 0.9), num_encoder_layers = 2:3, num_decoder_layers = [1, 1],
             encoder_wav_one = WAVELET_LIST, encoder_wav_two = WAVELET_LIST,
             encoder_wav_three = WAVELET_LIST, encoder_wav_four = WAVELET_LIST,

@@ -52,13 +52,12 @@ encode(n::MinMaxNormaliser, x) = (x .- n.lo) ./ (n.hi - n.lo)
 decode(n::MinMaxNormaliser, x) = x .* (n.hi - n.lo) .+ n.lo
 
 function loss_fcn(y_pred, y; p::Real = 2)
+    p == 2 && return sum(abs2, y_pred .- y)
     return sum(abs.(y_pred .- y) .^ p)
 end
 
-function BIC(model, n_samples::Int, loss_val::Real)
-    k = Lux.parameterlength(model)
-    return 2 * loss_val + k * log(n_samples)
-end
+BIC(k::Int, n_samples::Int, loss_val::Real) = 2 * loss_val + k * log(n_samples)
+BIC(model, n_samples::Int, loss_val::Real) = BIC(Lux.parameterlength(model), n_samples, loss_val)
 
 function log_csv(epoch, train_loss, test_loss, bic, elapsed, file_name)
     return open(file_name, "a") do f

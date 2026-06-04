@@ -29,8 +29,8 @@ function (m::RNO)(input, ps, st)
     dxdt = (x[1:(m.T - 1), :] .- x[2:(m.T), :]) ./ m.dt
 
     y_init = y_true[1:1, :]
-    y_rest = similar(x, m.T - 1, bs) .* 0.0f0
-    hidden = similar(x, m.n_hidden, bs) .* 0.0f0
+    y_rest = fill!(similar(x, m.T - 1, bs), 0.0f0)
+    hidden = fill!(similar(x, m.n_hidden, bs), 0.0f0)
 
     st_out = st.output_chain
     st_hid = st.hidden_chain
@@ -44,7 +44,7 @@ function (m::RNO)(input, ps, st)
             dxdt_t = reshape(dxdt[t - 1, :], 1, :)
 
             h, st_hid = m.hidden_chain(vcat(xprev, hidden), ps.hidden_chain, st_hid)
-            hidden = hidden .+ h .* m.dt   # forward Euler accumulator (canonical RNO)
+            hidden = hidden .+ h .* m.dt   # forward Euler accumulator
 
             out, st_out = m.output_chain(vcat(xprev, dxdt_t, hidden), ps.output_chain, st_out)
 

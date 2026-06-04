@@ -15,6 +15,5 @@ end
 
 function (l::PositionalEncoding)(x, ps, st)
     x3 = reshape(x, 1, size(x, 1), size(x, 2))
-    encoding = repeat(st.pe_vector[:, 1:size(x3, 2)], 1, 1, size(x3, 3))
-    return x3 .+ encoding, st
+    return x3 .+ st.pe_vector[:, 1:size(x3, 2)], st
 end
